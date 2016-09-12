@@ -14,7 +14,7 @@ describe 'CreatePoolConnection', ->
 
   beforeEach 'sut', ->
     @sut = new RedisPooledClient {
-      maxConnections: 5
+      maxConnections: 3
       minConnections: 1
       namespace: 'meshblu-test'
       redisUri: 'redis://localhost:6379'
@@ -39,12 +39,18 @@ describe 'CreatePoolConnection', ->
 
     it 'when using the client a lot', (done) ->
       @timeout 10000
-      async.times 6, (n, callback) =>
+      doneCount = 0
+      async.times 3, (n, callback) =>
         request.post "http://localhost:#{@port}/block/#{n}", (error, response) =>
           return done error if error?
           expect(response.statusCode).to.equal 408
+          doneCount++
           callback()
-      , done
+      , (error) =>
+        return done error if error?
+        expect(doneCount).to.equal 3
+        done()
+
 
   describe 'validateAsync', ->
     beforeEach (done) ->

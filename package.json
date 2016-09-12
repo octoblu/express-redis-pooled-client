@@ -1,6 +1,6 @@
 {
   "name": "express-redis-pooled-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Build a express-redis-pooled-client with redis and the job-logger built right in",
   "main": "index.js",
   "scripts": {

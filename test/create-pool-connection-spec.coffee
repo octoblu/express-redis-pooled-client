@@ -39,7 +39,7 @@ describe 'CreatePoolConnection', ->
 
     it 'when using the client a lot', (done) ->
       @timeout 10000
-      async.times 10, (n, callback) =>
+      async.times 6, (n, callback) =>
         request.post "http://localhost:#{@port}/block/#{n}", (error, response) =>
           return done error if error?
           expect(response.statusCode).to.equal 408

@@ -8,7 +8,10 @@ RedisPooledClient = require '..'
 
 describe 'CreatePoolConnection', ->
   beforeEach 'redis', (done) ->
-    @client = new RedisNS 'meshblu-test', new Redis 'redis://localhost:6379', dropBufferSupport: true
+    options = options = {
+      dropBufferSupport: true
+    }
+    @client = new RedisNS 'meshblu-test', new Redis 'redis://localhost:6379', options
     @client.once 'ready', done
     @client.once 'error', done
 
@@ -23,7 +26,7 @@ describe 'CreatePoolConnection', ->
   describe '->middleware', ->
     beforeEach (done) ->
       app = express()
-      app.use @sut.middleware
+      app.use @sut.middleware()
       app.post '/block/:n', (request, response) =>
         { n } = request.params
         request.redisClient.brpop "empty-list", 1, (error, result) =>
@@ -51,14 +54,32 @@ describe 'CreatePoolConnection', ->
         expect(doneCount).to.equal 3
         done()
 
-
-  describe 'validateAsync', ->
-    beforeEach (done) ->
-      @sut.pool.acquire (error, @client) =>
-        return done error if error?
-        @sut.pool.release @client
+    describe 'validate async', ->
+      beforeEach (done) ->
+        app = express()
+        app.use @sut.middleware()
         @sut.pool.acquire (error, @client) =>
-          done error
+          return done error if error?
+          @sut.pool.release @client
+          @sut.pool.acquire (error, @client) =>
+            done error
 
-    it 'should get a client', ->
-      expect(@client).to.exist
+      it 'should get a client', ->
+        expect(@client).to.exist
+
+  describe '->proofoflife', ->
+    beforeEach (done) ->
+      app = express()
+      app.use @sut.middleware()
+      app.use '/proofoflife', @sut.proofoflife()
+      @server = app.listen undefined, (error) =>
+        @port = @server.address().port
+        done error
+      enableDestroy @server
+
+    it 'when checking to /proofoflife', (done) ->
+      request.get "http://localhost:#{@port}/proofoflife", { json: true }, (error, response, body) =>
+        return done error if error?
+        expect(response.statusCode).to.equal 200
+        expect(body.online).to.be.true
+        done()

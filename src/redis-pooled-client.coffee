@@ -22,17 +22,24 @@ class RedisPooledClient
 
     @pool = @_createPool {maxConnections, minConnections, idleTimeoutMillis, namespace, redisUri}
 
-  middleware: (request, response, next) =>
-    @pool.acquire (error, redisClient) =>
-      return next error if error?
-      request.redisClient = redisClient
-      onFinished response, =>
-        @pool.release redisClient
-      next()
+  middleware: =>
+    return (request, response, next) =>
+      @pool.acquire (error, redisClient) =>
+        return next error if error?
+        request.redisClient = redisClient
+        onFinished response, =>
+          @pool.release redisClient
+        next()
+
+  proofoflife: =>
+    return (request, response, next) =>
+      request.redisClient.set 'test:write', Date.now(), (error) =>
+        return response.status(error?.code ? 500).send error: error.message if error?
+        response.send { online: true }
 
   _closeClient: (client) =>
-    client.on 'error', =>
-      # silently deal with it
+    client.on 'error', (error) =>
+      # silently ignore
 
     try
       if client.disconnect?
@@ -49,7 +56,10 @@ class RedisPooledClient
       min: minConnections
       idleTimeoutMillis: idleTimeoutMillis
       create: (callback) =>
-        client = new RedisNS namespace, redis.createClient redisUri, dropBufferSupport: true
+        options = {
+          dropBufferSupport: true,
+        }
+        client = new RedisNS namespace, redis.createClient redisUri, options
         client.ping (error) =>
           return callback error if error?
           client.once 'error', (error) =>
